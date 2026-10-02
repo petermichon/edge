@@ -16,8 +16,9 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./sites:/etc/caddy/sites:ro
+      # Bind the repo directory (not the single Caddyfile) so `git pull`
+      # replacements are visible without recreating the container.
+      - ./:/etc/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     networks:
