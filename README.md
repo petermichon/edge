@@ -30,7 +30,7 @@ docker network create edge
 
 - `compose.yaml` — the Caddy service.
 - `Caddyfile` — imports every file in `sites/`.
-- `sites/<app>.caddy` — one site block per app.
+- `sites/<app>.caddyfile` — one site block per app.
 
 ## Deploy
 
@@ -43,7 +43,7 @@ with `external: true`.
 
 ## Adding an app
 
-1. Create `sites/<app>.caddy` with a site block that `reverse_proxy`s the
+1. Create `sites/<app>.caddyfile` with a site block that `reverse_proxy`s the
    app's service name and port.
 2. `docker compose up -d`.
 3. Point the domain's DNS at this host; Caddy provisions the certificate.

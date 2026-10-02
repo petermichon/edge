@@ -1,4 +1,4 @@
 # Every site lives in its own file under sites/. Add or change an app without
 # touching the others; the proxy only knows hostnames and upstream service
 # names on the shared "edge" network.
-import /etc/caddy/sites/*.caddy
+import /etc/caddy/sites/*.caddyfile
