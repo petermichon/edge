@@ -1,0 +1,37 @@
+# edge — the single reverse proxy for this host.
+#
+# The only process that binds :80/:443. Every app runs in its own repo and
+# container and joins the shared "edge" network; this proxy routes by hostname.
+# Apps never reference each other.
+#
+#   docker network create edge        # once per host
+#   docker compose up -d
+name: edge
+
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    restart: unless-stopped
+
+# The shared network is created once on the host:
+#   docker network create edge
+# Every app and the proxy join it as an external network.
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  caddy-data:
+  caddy-config:

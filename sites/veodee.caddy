@@ -1,0 +1,9 @@
+# veodee — see https://github.com/petermichon/veodee
+veodee.com {
+	encode zstd gzip
+	reverse_proxy veodee:80
+}
+
+www.veodee.com {
+	redir https://veodee.com{uri} permanent
+}
