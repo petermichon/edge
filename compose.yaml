@@ -18,12 +18,11 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-    environment:
-      # OVH DNS credentials, used for the *.nohonu.com wildcard (DNS-01).
-      OVH_ENDPOINT: ${OVH_ENDPOINT}
-      OVH_APPLICATION_KEY: ${OVH_APPLICATION_KEY}
-      OVH_APPLICATION_SECRET: ${OVH_APPLICATION_SECRET}
-      OVH_CONSUMER_KEY: ${OVH_CONSUMER_KEY}
+    # OVH DNS credentials (used for the *.nohonu.com wildcard, DNS-01) live
+    # outside the repo, e.g. /etc/edge/edge.env with mode 600.
+    env_file:
+      - path: /etc/edge/edge.env
+        required: false
     volumes:
       # Bind the repo directory (not the single Caddyfile) so `git pull`
       # replacements are visible without recreating the container.
