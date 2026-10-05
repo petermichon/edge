@@ -1,0 +1,44 @@
+# nohonu — see https://github.com/petermichon/nohonu
+#
+# All nohonu hostnames resolve to the same app: the platform UI/API at the
+# apex, and user sites on subdomains and custom domains. Which tenant a name
+# belongs to is decided by the backend from the Host header — the proxy only
+# maps the name to a service.
+
+nohonu.com {
+	encode zstd gzip
+	handle_path /api/* {
+		reverse_proxy nohonu-backend:8080
+	}
+	handle {
+		reverse_proxy nohonu-web:80
+	}
+}
+
+www.nohonu.com {
+	redir https://nohonu.com{uri} permanent
+}
+
+# User subdomains: one wildcard certificate via DNS-01 (OVH).
+*.nohonu.com {
+	encode zstd gzip
+	tls {
+		dns ovh {
+			endpoint {$OVH_ENDPOINT}
+			application_key {$OVH_APPLICATION_KEY}
+			application_secret {$OVH_APPLICATION_SECRET}
+			consumer_key {$OVH_CONSUMER_KEY}
+		}
+	}
+	reverse_proxy nohonu-backend:8080
+}
+
+# Custom domains: on-demand certificates, gated by the backend's ownership
+# check (see on_demand_tls in ../Caddyfile).
+https:// {
+	encode zstd gzip
+	tls {
+		on_demand
+	}
+	reverse_proxy nohonu-backend:8080
+}

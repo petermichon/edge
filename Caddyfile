@@ -1,4 +1,14 @@
 # Every site lives in its own file under sites/. Add or change an app without
 # touching the others; the proxy only knows hostnames and upstream service
 # names on the shared "edge" network.
+#
+# Custom domains (hostnames the platform's users supply) are issued on demand
+# and gated by the owning backend, so the proxy never mints a certificate for
+# an unverified domain.
+{
+	on_demand_tls {
+		ask http://nohonu-backend:8080/check-custom-domain
+	}
+}
+
 import /etc/caddy/sites/*.caddyfile
