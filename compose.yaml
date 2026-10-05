@@ -24,11 +24,21 @@ services:
       - path: /etc/edge/edge.env
         required: false
     volumes:
-      # Bind the repo directory (not the single Caddyfile) so `git pull`
-      # replacements are visible without recreating the container.
-      - ./:/etc/caddy:ro
+      # Mount only what Caddy reads; the proxy never sees .git, .env, etc.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - ./snippets:/etc/caddy/snippets:ro
       - caddy-data:/data
       - caddy-config:/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
     networks:
       - edge
     restart: unless-stopped
