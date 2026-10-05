@@ -1,9 +1,11 @@
 # veodee — see https://github.com/petermichon/veodee
 veodee.com {
 	encode zstd gzip
+	import security_headers
 	reverse_proxy veodee:80
 }
 
 www.veodee.com {
+	import security_headers
 	redir https://veodee.com{uri} permanent
 }

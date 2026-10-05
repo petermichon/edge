@@ -1,0 +1,21 @@
+# Shared response-hardening, defined once and imported by every site file.
+
+# Platform-owned hostnames: we control HTTPS end to end, so HSTS is safe.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# Customer custom domains: deliberately no HSTS. We must not make an
+# irreversible HTTPS-only commitment on a domain we do not own.
+(customer_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

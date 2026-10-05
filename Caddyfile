@@ -6,9 +6,15 @@
 # and gated by the owning backend, so the proxy never mints a certificate for
 # an unverified domain.
 {
+	# Admin API stays on loopback (container-local, not reachable by apps).
+	admin localhost:2019
+	# Let in-flight requests finish when the config is reloaded.
+	grace_period 10s
+
 	on_demand_tls {
 		ask http://nohonu-backend:8080/check-custom-domain
 	}
 }
 
+import /etc/caddy/snippets/*.caddyfile
 import /etc/caddy/sites/*.caddyfile

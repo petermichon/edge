@@ -1,6 +1,7 @@
 # unrom — see https://github.com/petermichon/unrom
 unrom.com {
 	encode zstd gzip
+	import security_headers
 
 	handle /api/* {
 		reverse_proxy unrom-api:3000
@@ -12,5 +13,6 @@ unrom.com {
 }
 
 www.unrom.com {
+	import security_headers
 	redir https://unrom.com{uri} permanent
 }

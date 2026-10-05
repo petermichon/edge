@@ -7,6 +7,7 @@
 
 nohonu.com {
 	encode zstd gzip
+	import security_headers
 	handle_path /api/* {
 		reverse_proxy nohonu-backend:8080
 	}
@@ -16,12 +17,14 @@ nohonu.com {
 }
 
 www.nohonu.com {
+	import security_headers
 	redir https://nohonu.com{uri} permanent
 }
 
 # User subdomains: one wildcard certificate via DNS-01 (OVH).
 *.nohonu.com {
 	encode zstd gzip
+	import security_headers
 	tls {
 		dns ovh {
 			endpoint {$OVH_ENDPOINT}
@@ -37,6 +40,7 @@ www.nohonu.com {
 # check (see on_demand_tls in ../Caddyfile).
 https:// {
 	encode zstd gzip
+	import customer_headers
 	tls {
 		on_demand
 	}
