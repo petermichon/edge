@@ -7,6 +7,10 @@
 set -eu
 cd "$(dirname "$0")/.."
 
+# One deploy at a time.
+exec 9<"$0"
+flock -n 9 || { echo "another deploy is already running" >&2; exit 1; }
+
 PREV="$(git rev-parse HEAD)"
 
 echo "==> fetching"
@@ -30,10 +34,10 @@ echo "==> validating"
 
 apply() {
 	if [ "$rebuild" -eq 1 ]; then
-		docker compose up -d
+		docker compose up -d --wait
 	else
 		docker compose exec -T caddy \
-			caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+			caddy reload --address 127.0.0.1:2019 --config /etc/caddy/Caddyfile --adapter caddyfile
 	fi
 }
 
@@ -42,10 +46,10 @@ rollback() {
 	git reset --hard --quiet "$PREV"
 	if [ "$rebuild" -eq 1 ]; then
 		docker compose build
-		docker compose up -d
+		docker compose up -d --wait
 	else
 		docker compose exec -T caddy \
-			caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+			caddy reload --address 127.0.0.1:2019 --config /etc/caddy/Caddyfile --adapter caddyfile
 	fi
 }
 

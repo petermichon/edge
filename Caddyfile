@@ -6,8 +6,8 @@
 # and gated by the owning backend, so the proxy never mints a certificate for
 # an unverified domain.
 {
-	# Admin API stays on loopback (container-local, not reachable by apps).
-	admin localhost:2019
+	# Admin API stays on IPv4 loopback (container-local, not reachable by apps).
+	admin 127.0.0.1:2019
 	# Let in-flight requests finish when the config is reloaded.
 	grace_period 10s
 
