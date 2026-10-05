@@ -1,9 +1,9 @@
 #!/bin/sh
 # Deploy the edge on the host.
 #
-# Config-only changes are applied with `caddy reload` (zero downtime). Image
-# changes recreate the container. Anything that fails validation or the smoke
-# test is rolled back to the previous commit.
+# Reload when every change is pure config (zero downtime); otherwise recreate
+# the container, health-gated. Anything that fails validation or the smoke test
+# is rolled back to the previous commit.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -19,12 +19,20 @@ git pull --ff-only
 changed="$(git diff --name-only "$PREV" HEAD || true)"
 [ -n "$changed" ] || { echo "already up to date"; exit 0; }
 
-rebuild=0
-if echo "$changed" | grep -qx 'Dockerfile'; then
-	rebuild=1
-fi
+# Reload only when every changed file is config we can load in place.
+reload_only=1
+dockerfile=0
+for f in $changed; do
+	case "$f" in
+		Caddyfile|sites/*|snippets/*) ;;
+		Dockerfile) dockerfile=1; reload_only=0 ;;
+		*) reload_only=0 ;;
+	esac
+done
+# A missing container (first run, or after `down`) must be created, not reloaded.
+docker compose ps -q caddy | grep -q . || reload_only=0
 
-if [ "$rebuild" -eq 1 ]; then
+if [ "$dockerfile" -eq 1 ]; then
 	echo "==> building proxy image"
 	docker compose build
 fi
@@ -33,24 +41,22 @@ echo "==> validating"
 ./bin/validate.sh
 
 apply() {
-	if [ "$rebuild" -eq 1 ]; then
-		docker compose up -d --wait
+	if [ "$reload_only" -eq 1 ]; then
+		docker compose exec -T caddy caddy reload \
+			--address 127.0.0.1:2019 \
+			--config /etc/caddy/Caddyfile --adapter caddyfile
 	else
-		docker compose exec -T caddy \
-			caddy reload --address 127.0.0.1:2019 --config /etc/caddy/Caddyfile --adapter caddyfile
+		docker compose up -d --wait
 	fi
 }
 
 rollback() {
 	echo "==> rolling back to $PREV" >&2
 	git reset --hard --quiet "$PREV"
-	if [ "$rebuild" -eq 1 ]; then
+	if [ "$dockerfile" -eq 1 ]; then
 		docker compose build
-		docker compose up -d --wait
-	else
-		docker compose exec -T caddy \
-			caddy reload --address 127.0.0.1:2019 --config /etc/caddy/Caddyfile --adapter caddyfile
 	fi
+	apply
 }
 
 if ! apply; then
