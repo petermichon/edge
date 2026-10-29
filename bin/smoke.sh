@@ -3,7 +3,7 @@
 # SMOKE_TARGET overrides the address to probe (default: loopback on the host).
 set -eu
 
-HOSTS="nohonu.com unrom.com veodee.com"
+HOSTS="nohonu.com unrom.com veodee.com stats.unrom.com"
 TARGET="${SMOKE_TARGET:-127.0.0.1}"
 
 fail=0

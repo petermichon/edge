@@ -1,0 +1,7 @@
+# umami — self-hosted analytics (separate stack in /srv/umami).
+stats.unrom.com {
+	encode zstd gzip
+	import security_headers
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy umami:3000
+}
