@@ -69,7 +69,7 @@ adding a file is the whole change.
   outside the repo with mode 600:
 
   ```sh
-  sudo install -m 600 -o root -g root .env.example /etc/edge/edge.env
+  sudo install -D -m 600 -o "$USER" -g "$(id -gn)" .env.example /etc/edge/edge.env
   # then fill in OVH_APPLICATION_KEY, OVH_APPLICATION_SECRET, OVH_CONSUMER_KEY
   ```
 
@@ -97,7 +97,7 @@ deploys at once (it takes a `flock`). What it does:
 Manual equivalents:
 
 ```sh
-bin/validate.sh                     # what CI/you run before merging
+bin/validate.sh                     # run before merging
 docker compose up -d                # first run, or after compose/Dockerfile changes
 bin/smoke.sh                        # after any change
 SMOKE_TARGET=203.0.113.10 bin/smoke.sh   # probe a remote host instead of loopback
@@ -114,7 +114,7 @@ when the config hash is unchanged, so the container is not restarted.
 3. Point the domain's DNS at this host; Caddy provisions the certificate.
 4. `bin/deploy.sh`.
 
-The app stack must join the network as external:
+The app stack joins the network as external, and needs no host ports:
 
 ```yaml
 networks:
@@ -123,8 +123,8 @@ networks:
     name: edge
 ```
 
-and does not need to publish ports to the host. A `127.0.0.1:PORT` bind is
-redundant once the service is on `edge`, and it can hide routing mistakes.
+A `127.0.0.1:PORT` bind is redundant once the service is on `edge`, and it can
+hide routing mistakes.
 
 ## Adding a host
 
@@ -132,7 +132,7 @@ redundant once the service is on `edge`, and it can hide routing mistakes.
 git clone https://github.com/petermichon/edge.git /srv/edge
 cd /srv/edge
 docker network create edge
-sudo install -m 600 -o root -g root .env.example /etc/edge/edge.env
+sudo install -D -m 600 -o "$USER" -g "$(id -gn)" .env.example /etc/edge/edge.env
 $EDITOR /etc/edge/edge.env
 docker compose up -d --build
 bin/smoke.sh
