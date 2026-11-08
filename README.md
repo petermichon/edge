@@ -29,7 +29,7 @@ The apps do not know about each other; only this proxy knows them all.
 | `www.nohonu.com` | 301 → `nohonu.com` |
 | `*.nohonu.com` | `nohonu-backend:8080` (wildcard cert, DNS-01 via OVH) |
 | custom domains | `nohonu-backend:8080` (on-demand cert, gated by the backend) |
-| `unrom.com` | `/api/*` → `unrom-api:3000`, else `unrom-web:3001` |
+| `unrom.com` | `/api` and `/api/*` → `unrom-api:3000`, else `unrom-web:3001` |
 | `www.unrom.com` | 301 → `unrom.com` |
 | `veodee.com` | `veodee:80` |
 | `www.veodee.com` | 301 → `veodee.com` |
@@ -180,5 +180,7 @@ docker compose exec caddy caddy reload --address 127.0.0.1:2019 \
 - `handle /api/*` preserves the prefix; `handle_path /api/*` strips it. These
   are not interchangeable — check what the upstream expects before copying a
   site block.
+- `handle /api/*` does not match bare `/api`. When an app serves an index at
+  the bare path, use an explicit matcher such as `@api path /api /api/*`.
 - A hostname that is not in `bin/smoke.sh` is not monitored by deploys.
 - `.env` and `*.log` are gitignored; never add credentials or generated files.

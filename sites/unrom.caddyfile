@@ -3,7 +3,9 @@ unrom.com {
 	encode zstd gzip
 	import security_headers
 
-	handle /api/* {
+	# The bare /api path is the API's index, so match it as well as /api/*.
+	@api path /api /api/*
+	handle @api {
 		reverse_proxy unrom-api:3000
 	}
 
