@@ -50,7 +50,7 @@ snippets/*.caddyfile   shared snippets, imported into every site
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
 bin/validate.sh        Caddyfile + compose validation (used by deploy)
 bin/smoke.sh           every public host must answer over HTTPS
-.env.example           OVH credentials + stats auth (never commit real values)
+.env.example           OVH credentials template (never commit real values)
 ```
 
 `Caddyfile` imports everything in `snippets/` then everything in `sites/`, so
@@ -135,6 +135,9 @@ cd /srv/edge
 docker network create edge
 sudo install -D -m 600 -o "$USER" -g "$(id -gn)" .env.example /etc/edge/edge.env
 $EDITOR /etc/edge/edge.env
+# Report password for logs.unrom.com (see "Traffic logs")
+docker run --rm -it caddy:2 caddy hash-password | sudo tee /etc/edge/stats-auth >/dev/null
+sudo chmod 600 /etc/edge/stats-auth
 docker compose up -d --build
 bin/smoke.sh
 ```
@@ -190,8 +193,9 @@ writes `index.html` to the `stats-report` volume, which Caddy serves at
 - Country and ASN panels stay empty until MaxMind databases are mounted; add
   `GeoLite2-City.mmdb` / `GeoLite2-ASN.mmdb` and pass `--geoip-database`.
 - Before deploying, point DNS for `logs.unrom.com` at this host (Caddy needs a
-  certificate for the smoke test) and set `STATS_AUTH_HASH` in
-  `/etc/edge/edge.env` to a bcrypt hash from `caddy hash-password`.
+  certificate for the smoke test) and create `/etc/edge/stats-auth` (mode 600)
+  with a hash from `caddy hash-password`. It is read through `{file.*}` at
+  config load, so rotating the password is `caddy reload`, not a recreate.
 - Adding or removing a site's log file takes effect on reload. Changing the
   rolling options of an existing file requires a restart, so prefer the
   recreate path for those edits.

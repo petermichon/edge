@@ -34,6 +34,9 @@ services:
       - access-logs:/var/log/caddy
       # GoAccess's generated report, served at logs.unrom.com.
       - stats-report:/srv/stats:ro
+      # Basic-auth hash for that report. Read via {file.*} at config load, so
+      # rotating it is a reload rather than a recreate.
+      - /etc/edge/stats-auth:/etc/edge/stats-auth:ro
     read_only: true
     tmpfs:
       - /tmp
