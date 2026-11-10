@@ -8,6 +8,7 @@
 nohonu.com {
 	encode zstd gzip
 	import security_headers
+	import logging nohonu
 	handle_path /api/* {
 		reverse_proxy nohonu-backend:8080
 	}

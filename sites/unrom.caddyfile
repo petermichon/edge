@@ -2,6 +2,7 @@
 unrom.com {
 	encode zstd gzip
 	import security_headers
+	import logging unrom
 
 	# The bare /api path is the API's index, so match it as well as /api/*.
 	@api path /api /api/*

@@ -1,0 +1,32 @@
+# Shared access logging, defined once and imported by every platform site.
+#
+# Import with the site's short name, which becomes the log filename:
+#
+#   import logging unrom
+#
+# One file per site keeps exactly one writer per path: two `log` blocks on the
+# same file would rotate it out from under each other.
+#
+# Nothing is filtered or sampled here, because non-JS clients never reach the
+# Umami beacon — this stream is the only complete record of traffic. Classify
+# it when reading, never when writing.
+(logging) {
+	log {
+		output file /var/log/caddy/{args[0]}.log {
+			# Roll by size, then keep by age: 30 days, no file-count cap
+			# (roll_keep -1 disables the default keep-10 limit, which would
+			# otherwise drop files before they are 30 days old).
+			roll_size 100MiB
+			roll_keep -1
+			roll_keep_for 720h
+			# Keep rolled files as .log: the report generator globs *.log and
+			# has no decompressor in its image.
+			roll_uncompressed
+		}
+		# Drop query strings: they can carry API keys or tokens, and the
+		# path alone is what traffic statistics need.
+		format filter {
+			request>uri regexp `\?.*` ""
+		}
+	}
+}

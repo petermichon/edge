@@ -2,6 +2,7 @@
 veodee.com {
 	encode zstd gzip
 	import security_headers
+	import logging veodee
 	reverse_proxy veodee:80
 }
 
