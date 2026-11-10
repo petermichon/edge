@@ -1,9 +1,10 @@
 # Traffic statistics: GoAccess's HTML report over Caddy's access logs.
 #
 # The report contains client IPs, so it is never public and never indexed.
-# The password hash lives in /etc/edge/stats-auth (mode 600, outside the repo),
-# read through a global placeholder: rotating it is a `caddy reload`, and the
-# secret never enters the container environment.
+# The password hash lives in /etc/edge/stats-auth (root-owned, mode 600, outside
+# the repo) and is read through a global placeholder at config load.
+# Rotating it needs a recreate, not a reload: a reload of an unchanged config
+# does not re-provision the handler, so the cached hash survives. See README.
 logs.unrom.com {
 	import security_headers
 	header X-Robots-Tag "noindex, nofollow"
