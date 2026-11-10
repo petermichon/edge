@@ -69,9 +69,10 @@ services:
   goaccess:
     image: allinurl/goaccess:1.12
     profiles: ["stats"]
+    # The image's ENTRYPOINT is the goaccess binary, so the loop has to be the
+    # entrypoint; `command` alone would be passed to goaccess as arguments.
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - sh
-      - -c
       - |
         while :; do
           goaccess /logs/*.log --log-format=CADDY \
