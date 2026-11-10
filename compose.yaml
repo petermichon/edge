@@ -30,6 +30,10 @@ services:
       - ./snippets:/etc/caddy/snippets:ro
       - caddy-data:/data
       - caddy-config:/config
+      # Access logs written by snippets/logging.caddyfile.
+      - access-logs:/var/log/caddy
+      # GoAccess's generated report, served at logs.unrom.com.
+      - stats-report:/srv/stats:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -39,6 +43,13 @@ services:
       - NET_BIND_SERVICE
     security_opt:
       - no-new-privileges:true
+    # Container stdout is a debugging fallback, not the log sink; cap it so a
+    # chatty Caddy cannot fill the host disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     networks:
       - edge
     restart: unless-stopped
@@ -48,6 +59,37 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # Regenerates the traffic report from Caddy's access logs every five minutes.
+  # No network, no ports, no shell beyond the loop: the report is a file, and
+  # Caddy serves it at logs.unrom.com. Opt in with `--profile stats`.
+  #
+  # Requires the access-logs volume written by the log snippet. Country and
+  # ASN panels stay empty until a MaxMind database is mounted (see README).
+  goaccess:
+    image: allinurl/goaccess:1.12
+    profiles: ["stats"]
+    command:
+      - sh
+      - -c
+      - |
+        while :; do
+          goaccess /logs/*.log --log-format=CADDY \
+            --output=/report/index.html --no-progress || true
+          sleep 300
+        done
+    volumes:
+      - access-logs:/logs:ro
+      - stats-report:/report
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+    restart: unless-stopped
 
 # The shared network is created once on the host:
 #   docker network create edge
@@ -60,3 +102,5 @@ networks:
 volumes:
   caddy-data:
   caddy-config:
+  access-logs:
+  stats-report:
