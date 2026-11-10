@@ -193,9 +193,13 @@ writes `index.html` to the `stats-report` volume, which Caddy serves at
 - Country and ASN panels stay empty until MaxMind databases are mounted; add
   `GeoLite2-City.mmdb` / `GeoLite2-ASN.mmdb` and pass `--geoip-database`.
 - Before deploying, point DNS for `logs.unrom.com` at this host (Caddy needs a
-  certificate for the smoke test) and create `/etc/edge/stats-auth` (mode 600)
-  with a hash from `caddy hash-password`. It is read through `{file.*}` at
-  config load, so rotating the password is `caddy reload`, not a recreate.
+  certificate for the smoke test) and create `/etc/edge/stats-auth` with a hash
+  from `caddy hash-password`. It is read through `{file.*}` at config load, so
+  rotating the password is `caddy reload`, not a recreate.
+- The file must be **root-owned**, mode 600. The container drops
+  `CAP_DAC_OVERRIDE`, so root inside it cannot read a file owned by another
+  user (`open ...: permission denied`). Changing only the contents needs a
+  reload; changing ownership needs a recreate.
 - Adding or removing a site's log file takes effect on reload. Changing the
   rolling options of an existing file requires a restart, so prefer the
   recreate path for those edits.
