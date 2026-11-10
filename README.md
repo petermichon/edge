@@ -34,6 +34,7 @@ The apps do not know about each other; only this proxy knows them all.
 | `veodee.com` | `veodee:80` |
 | `www.veodee.com` | 301 → `veodee.com` |
 | `stats.unrom.com` | `umami:3000` (`noindex`) |
+| `logs.unrom.com` | static `stats-report` volume, basic auth (`noindex`) |
 
 Which hostname belongs to which tenant is decided by the nohonu backend from
 the `Host` header. The proxy only maps names to services.
@@ -49,7 +50,7 @@ snippets/*.caddyfile   shared snippets, imported into every site
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
 bin/validate.sh        Caddyfile + compose validation (used by deploy)
 bin/smoke.sh           every public host must answer over HTTPS
-.env.example           OVH credential template (never commit real values)
+.env.example           OVH credentials + stats auth (never commit real values)
 ```
 
 `Caddyfile` imports everything in `snippets/` then everything in `sites/`, so
@@ -159,11 +160,48 @@ docker compose exec caddy caddy reload --address 127.0.0.1:2019 \
 - Caddy needs `:80` for ACME HTTP-01 and redirects; keep it open even though
   every site is HTTPS-only.
 
+## Traffic logs
+
+Caddy writes no access log unless a site asks for one, so `snippets/logging.caddyfile`
+is imported per site as `import logging <name>`. Each site gets its own
+`/var/log/caddy/<name>.log`: JSON, one line per request, nothing sampled or
+filtered (query strings excepted — they are dropped so tokens never hit disk).
+
+- **Coverage.** Platform hostnames only: `unrom`, `nohonu`, `veodee`. The
+  `*.nohonu.com` block and the `https://` catch-all serve other people's sites,
+  and `stats.unrom.com` would duplicate Umami's own data, so they are excluded.
+- **Retention.** 30 days, by age (`roll_keep_for 720h`), not by file count.
+  Rolled files are bounded by `roll_size 100MiB`.
+- **Why both numbers exist.** Umami only sees clients that run JavaScript, so
+  non-JS bots are invisible and headless browsers count as humans. The access
+  log is the complete request stream; the two numbers are never summed.
+
+The report is generated, not live:
+
+```sh
+docker compose --profile stats up -d          # start the report generator
+docker compose logs -f goaccess               # parse errors land here
+```
+
+`goaccess` runs `--log-format=CADDY` over `/logs/*.log` every five minutes and
+writes `index.html` to the `stats-report` volume, which Caddy serves at
+`logs.unrom.com` behind basic auth.
+
+- Country and ASN panels stay empty until MaxMind databases are mounted; add
+  `GeoLite2-City.mmdb` / `GeoLite2-ASN.mmdb` and pass `--geoip-database`.
+- Before deploying, point DNS for `logs.unrom.com` at this host (Caddy needs a
+  certificate for the smoke test) and set `STATS_AUTH_HASH` in
+  `/etc/edge/edge.env` to a bcrypt hash from `caddy hash-password`.
+- Adding or removing a site's log file takes effect on reload. Changing the
+  rolling options of an existing file requires a restart, so prefer the
+  recreate path for those edits.
+
 ## Security posture
 
 - Container is `read_only`, `cap_drop: ALL` + `NET_BIND_SERVICE`,
-  `no-new-privileges`, with only `Caddyfile`, `sites/`, `snippets/` mounted
-  read-only. It never sees `.git` or `.env`.
+  `no-new-privileges`, with only `Caddyfile`, `sites/`, `snippets/` and the
+  report volume mounted read-only. It never sees `.git` or `.env`. The single
+  writable mount is `access-logs` (`/var/log/caddy`).
 - Secrets come from `/etc/edge/edge.env` (mode 600, outside the repo).
 - `security_headers` sends HSTS with `includeSubDomains` for platform-owned
   hostnames.

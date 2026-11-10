@@ -1,0 +1,17 @@
+# Traffic statistics: GoAccess's HTML report over Caddy's access logs.
+#
+# The report contains client IPs, so it is never public and never indexed.
+# STATS_AUTH_HASH must be a bcrypt hash from `caddy hash-password` (see
+# .env.example). Until it is set, the account matches no password: the built-in
+# default is a hash of a random value that is not stored anywhere.
+logs.unrom.com {
+	import security_headers
+	header X-Robots-Tag "noindex, nofollow"
+
+	basic_auth {
+		admin {$STATS_AUTH_HASH:$2a$14$wo0fY4MAf15mwr5lWhx8I.44jBFTSKC857wbbyZz68v80.9/E03qa}
+	}
+
+	root * /srv/stats
+	file_server
+}
