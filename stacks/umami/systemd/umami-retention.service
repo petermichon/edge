@@ -1,0 +1,20 @@
+[Unit]
+Description=Umami analytics retention
+Documentation=file:///srv/edge/stacks/umami/retention.sql
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=debian
+Group=debian
+WorkingDirectory=/srv/edge/stacks/umami
+ExecStart=/bin/sh -c '/usr/bin/docker exec -i umami-db-1 psql -U umami -d umami -v ON_ERROR_STOP=1 -f - < /srv/edge/stacks/umami/retention.sql'
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=15min
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

@@ -18,23 +18,34 @@ TLS automatically (Let's Encrypt), and routes by hostname.
                                                  unrom-api:3000
 ```
 
-Each app runs in its own repo and stack and joins the external `edge` network.
-The apps do not know about each other; only this proxy knows them all.
+Each app currently runs in its own repo and stack and joins the external `edge`
+network. The apps do not know about each other; only this proxy knows them all.
+
+## Deployment source of truth
+
+This repository is the intended source of truth for the whole host deployment,
+not just Caddy. That is not true yet: the application stacks are still deployed
+from `/srv/<app>` separately.
+
+The target layout, current inventory, migration checklist and known risks are
+in [`docs/deployment.md`](docs/deployment.md). The Umami retention job is now
+versioned under [`stacks/umami/`](stacks/umami/), but the live host still uses
+its hand-installed copies.
 
 ## Current routes
 
-| Hostname | Upstream |
-|---|---|
-| `nohonu.com` | `/api/*` → `nohonu-backend:8080`, else `nohonu-web:80` |
-| `www.nohonu.com` | 301 → `nohonu.com` |
-| `*.nohonu.com` | `nohonu-backend:8080` (wildcard cert, DNS-01 via OVH) |
-| custom domains | `nohonu-backend:8080` (on-demand cert, gated by the backend) |
-| `unrom.com` | `/api` and `/api/*` → `unrom-api:3000`, else `unrom-web:3001` |
-| `www.unrom.com` | 301 → `unrom.com` |
-| `veodee.com` | `veodee:80` |
-| `www.veodee.com` | 301 → `veodee.com` |
-| `stats.unrom.com` | `umami:3000` (`noindex`) |
-| `logs.unrom.com` | static `stats-report` volume, basic auth (`noindex`) |
+| Hostname          | Upstream                                                      |
+| ----------------- | ------------------------------------------------------------- |
+| `nohonu.com`      | `/api/*` → `nohonu-backend:8080`, else `nohonu-web:80`        |
+| `www.nohonu.com`  | 301 → `nohonu.com`                                            |
+| `*.nohonu.com`    | `nohonu-backend:8080` (wildcard cert, DNS-01 via OVH)         |
+| custom domains    | `nohonu-backend:8080` (on-demand cert, gated by the backend)  |
+| `unrom.com`       | `/api` and `/api/*` → `unrom-api:3000`, else `unrom-web:3001` |
+| `www.unrom.com`   | 301 → `unrom.com`                                             |
+| `veodee.com`      | `veodee:80`                                                   |
+| `www.veodee.com`  | 301 → `veodee.com`                                            |
+| `stats.unrom.com` | `umami:3000` (`noindex`)                                      |
+| `logs.unrom.com`  | static `stats-report` volume, basic auth (`noindex`)          |
 
 Which hostname belongs to which tenant is decided by the nohonu backend from
 the `Host` header. The proxy only maps names to services.
@@ -47,6 +58,8 @@ Dockerfile             caddy:2 pinned by digest, built with the OVH DNS plugin
 compose.yaml           the Caddy service (project name: edge)
 sites/<app>.caddyfile  one site block per app
 snippets/*.caddyfile   shared snippets, imported into every site
+stacks/umami/          versioned Umami retention job (not deployed from here yet)
+docs/deployment.md     target host deployment model and migration checklist
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
 bin/validate.sh        Caddyfile + compose validation (used by deploy)
 bin/smoke.sh           every public host must answer over HTTPS
