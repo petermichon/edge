@@ -27,10 +27,13 @@ the deployment layer:
 | nohonu    | `/srv/nohonu`         | `nohonu-backend`, `nohonu-web` | `nohonu_nohonu_data`                                                            | not yet inventoried                          |
 | veodee    | `/srv/veodee`         | `veodee`                       | none                                                                            | not yet inventoried                          |
 | freshdock | per-app stacks        | `freshdock`                    | Docker socket                                                                   | none                                         |
+| opencode  | host process (systemd, not in git) | `opencode serve`        | `~/.local/share/opencode` (sessions, provider auth)                             | `/etc/opencode/server.env`                   |
 
 All application services join the external `edge` network. Only Caddy publishes
 ports `80` and `443`; the `127.0.0.1:3000`/`:3001` binds on unrom are debugging
-fallbacks, not required by the proxy.
+fallbacks, not required by the proxy. `opencode` is the exception: it runs on
+the host and the proxy reaches it on the bridge gateway, scoped by ufw — see
+[`opencode.md`](opencode.md).
 
 Umami retention is versioned here under `stacks/umami/`, but the running host
 still uses copies in `/srv/umami` and `/etc/systemd/system`.

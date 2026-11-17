@@ -1,0 +1,19 @@
+# opencode — the coding agent running on this host, reached over TLS only.
+#
+# Deliberate exception to "reverse_proxy the service name": the agent is a
+# host process under systemd, not a container on `edge`, so the upstream is the
+# edge bridge gateway. ufw allows 172.20.0.0/16 -> 4096 and nothing else, so
+# this vhost is the only path in. See docs/opencode.md.
+#
+# No basic_auth here on purpose: it consumes the Authorization header, and the
+# agent needs it for its own Basic auth. The agent's password is the gate.
+
+oc.metal.petermichon.fr {
+	encode zstd gzip
+	import security_headers
+	import logging opencode
+	reverse_proxy 172.20.0.1:4096 {
+		# Keep SSE/streaming responses unbuffered for the mobile app.
+		flush_interval -1
+	}
+}

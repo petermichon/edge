@@ -46,6 +46,7 @@ its hand-installed copies.
 | `www.veodee.com`  | 301 → `veodee.com`                                            |
 | `stats.unrom.com` | `umami:3000` (`noindex`)                                      |
 | `logs.unrom.com`  | static `stats-report` volume, basic auth (`noindex`)          |
+| `oc.metal.petermichon.fr` | `172.20.0.1:4096` — host process, agent Basic auth ([docs](docs/opencode.md)) |
 
 Which hostname belongs to which tenant is decided by the nohonu backend from
 the `Host` header. The proxy only maps names to services.
