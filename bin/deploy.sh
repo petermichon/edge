@@ -1,9 +1,9 @@
 #!/bin/sh
 # Deploy the edge on the host.
 #
-# Reload when every change is pure config (zero downtime); otherwise recreate
-# the container, health-gated. Anything that fails validation or the smoke test
-# is rolled back to the previous commit.
+# Reload when the Caddy config changed, recreate when the image or compose file
+# did, health-gated either way. Anything that fails validation or the smoke
+# test is rolled back to the previous commit.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -19,20 +19,25 @@ git pull --ff-only
 changed="$(git diff --name-only "$PREV" HEAD || true)"
 [ -n "$changed" ] || { echo "already up to date"; exit 0; }
 
-# Reload only when every changed file is config we can load in place.
-reload_only=1
-dockerfile=0
+# A change to the Caddy config needs a reload; a change to the image or the
+# compose file needs a recreate. Treat them as independent: a commit that
+# touches both sites/ and, say, bin/ must still reload, and `docker compose
+# up -d` is a no-op when only the config text changed.
+reload_config=0
+rebuild=0
+container_changed=0
 for f in $changed; do
 	case "$f" in
-		Caddyfile|sites/*|snippets/*) ;;
-		Dockerfile) dockerfile=1; reload_only=0 ;;
-		*) reload_only=0 ;;
+		Caddyfile|sites/*|snippets/*) reload_config=1 ;;
+		Dockerfile) rebuild=1 ;;
+		compose.yaml|compose.yml) container_changed=1 ;;
+		*) ;;
 	esac
 done
 # A missing container (first run, or after `down`) must be created, not reloaded.
-docker compose ps -q caddy | grep -q . || reload_only=0
+docker compose ps -q caddy | grep -q . || container_changed=1
 
-if [ "$dockerfile" -eq 1 ]; then
+if [ "$rebuild" -eq 1 ]; then
 	echo "==> building proxy image"
 	docker compose build
 fi
@@ -41,19 +46,19 @@ echo "==> validating"
 ./bin/validate.sh
 
 apply() {
-	if [ "$reload_only" -eq 1 ]; then
+	if [ "$rebuild" -eq 1 ] || [ "$container_changed" -eq 1 ]; then
+		docker compose up -d --wait
+	elif [ "$reload_config" -eq 1 ]; then
 		docker compose exec -T caddy caddy reload \
 			--address 127.0.0.1:2019 \
 			--config /etc/caddy/Caddyfile --adapter caddyfile
-	else
-		docker compose up -d --wait
 	fi
 }
 
 rollback() {
 	echo "==> rolling back to $PREV" >&2
 	git reset --hard --quiet "$PREV"
-	if [ "$dockerfile" -eq 1 ]; then
+	if [ "$rebuild" -eq 1 ]; then
 		docker compose build
 	fi
 	apply
