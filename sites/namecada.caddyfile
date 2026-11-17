@@ -1,0 +1,15 @@
+# namecada — download page for the app; see https://github.com/petermichon/namecada
+#
+# The page is static and has no backend: the product is the desktop and Android
+# app, where every check runs on the device. Nothing here proxies to a server.
+namecada.com {
+	encode zstd gzip
+	import security_headers
+	import logging namecada
+	reverse_proxy namecada:80
+}
+
+www.namecada.com {
+	import security_headers
+	redir https://namecada.com{uri} permanent
+}
