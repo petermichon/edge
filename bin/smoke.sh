@@ -3,7 +3,7 @@
 # SMOKE_TARGET overrides the address to probe (default: loopback on the host).
 set -eu
 
-HOSTS="nohonu.com unrom.com veodee.com namecada.com stats.unrom.com logs.unrom.com oc.metal.petermichon.fr"
+HOSTS="nohonu.com unrom.com veodee.com namecada.com stats.unrom.com logs.unrom.com oc.metal.petermichon.fr platformer.metal.petermichon.fr"
 TARGET="${SMOKE_TARGET:-127.0.0.1}"
 
 # A host added in this deploy has no certificate yet, so its first requests fail

@@ -47,6 +47,7 @@ its hand-installed copies.
 | `stats.unrom.com` | `umami:3000` (`noindex`)                                      |
 | `logs.unrom.com`  | static `stats-report` volume, basic auth (`noindex`)          |
 | `oc.metal.petermichon.fr` | `172.20.0.1:4096` — host process, agent Basic auth ([docs](docs/opencode.md)) |
+| `platformer.metal.petermichon.fr` | `platformer-web:80` (static game, `noindex`) |
 
 Which hostname belongs to which tenant is decided by the nohonu backend from
 the `Host` header. The proxy only maps names to services.
@@ -184,7 +185,7 @@ is imported per site as `import logging <name>`. Each site gets its own
 `/var/log/caddy/<name>.log`: JSON, one line per request, nothing sampled or
 filtered (query strings excepted — they are dropped so tokens never hit disk).
 
-- **Coverage.** Platform hostnames only: `unrom`, `nohonu`, `veodee`. The
+- **Coverage.** Platform hostnames only: `unrom`, `nohonu`, `veodee`, `platformer`. The
   `*.nohonu.com` block and the `https://` catch-all serve other people's sites,
   and `stats.unrom.com` would duplicate Umami's own data, so they are excluded.
 - **Retention.** 30 days, by age (`roll_keep_for 720h`), not by file count.

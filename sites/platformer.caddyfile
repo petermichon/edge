@@ -1,0 +1,11 @@
+# platformer — see https://github.com/petermichon/platformer
+#
+# A static game container on the edge network. No API, no auth: it is public by
+# design, but unlisted, so it must not turn up in search results.
+platformer.metal.petermichon.fr {
+	encode zstd gzip
+	import security_headers
+	import logging platformer
+	header X-Robots-Tag "noindex"
+	reverse_proxy platformer-web:80
+}
