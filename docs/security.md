@@ -59,6 +59,9 @@ sudo fail2ban-client set opencode unbanip 192.0.2.123
 
 ## Proxy
 
+- Caddy and GoAccess are pinned by digest. Renovate (`renovate.json`) opens
+  digest-bump PRs, CI validates, and `edge-deploy.timer` applies a merge within
+  five minutes. Caddy is the only public listener.
 - Caddy runs read-only, `cap_drop: ALL` + `NET_BIND_SERVICE`,
   `no-new-privileges`; the admin API listens on `127.0.0.1:2019` inside the
   container; secrets live outside the repo and the mounted tree.
@@ -88,11 +91,15 @@ effective power while it remains in the `docker` group.
 
 ## Known risks, ranked
 
-1. **freshdock has the Docker socket and a floating image.**
-   `unrom-freshdock-1` mounts `/var/run/docker.sock` and runs
-   `ghcr.io/turbootzz/freshdock:latest`: root-equivalent and tag-mutable.
-   Pin it by digest or remove it and update deliberately. This is a separate
-   root-equivalent party from opencode, not part of the accepted design.
+1. **freshdock is still root-equivalent via the Docker socket.**
+   `unrom-freshdock-1` mounts `/var/run/docker.sock` and now runs a pinned
+   digest (`…@sha256:0fdd8011…`) instead of `:latest`; the pin lives in the
+   untracked `/srv/unrom/deploy/compose.override.yaml`. The tag can no longer
+   move under it, but a compromise of freshdock is still host root. It is a
+   separate party from the accepted opencode access. The app images it updates
+   still float on `:latest`, so this remains the unreviewed update path until
+   those repos are digest-pinned and Renovate-managed. Remove it if app updates
+   become deliberate; otherwise keep the digest pin and version the override.
 2. **`logs.unrom.com` 401s are outside fail2ban.** That site has no access log
    (it would duplicate the report), so its Basic auth is unthrottled. The
    report is low value; revisit if it starts getting hit.

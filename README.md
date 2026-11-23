@@ -67,7 +67,8 @@ docs/deployment.md     target host deployment model and migration checklist
 docs/opencode.md       the opencode host process and its route
 docs/security.md       host baseline, fail2ban jail and known risks
 host/                  sshd + fail2ban hardening, installed on the host
-systemd/               edge-monitor service + timer (installed on the host)
+systemd/               edge-monitor and edge-deploy units (installed on the host)
+renovate.json          digest-bump PRs for Caddy and GoAccess
 monitor.env.example    alert destination template (copy to /etc/edge/monitor.env)
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
 bin/validate.sh        Caddyfile + compose validation (used by deploy and CI)
@@ -132,6 +133,18 @@ What it does:
    they describe the apps, and an app can be down for reasons no proxy change
    fixes. Caddy's reload is atomic, so a config that did not load never
    replaces the running one.
+
+`edge-deploy.timer` runs the same script every five minutes, so a merged change
+is live without a manual deploy. CI validates the pull request first; disable
+the timer if you prefer to deploy by hand. Renovate (`renovate.json`) opens PRs
+for the pinned Caddy and GoAccess digests, so an image bump is also just a
+merge.
+
+```sh
+sudo install -m 644 systemd/edge-deploy.service systemd/edge-deploy.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now edge-deploy.timer
+```
 
 Manual equivalents:
 

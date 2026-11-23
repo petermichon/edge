@@ -81,7 +81,7 @@ services:
   # Requires the access-logs volume written by the log snippet. Country and
   # ASN panels stay empty until a MaxMind database is mounted (see README).
   goaccess:
-    image: allinurl/goaccess:1.12
+    image: allinurl/goaccess:1.12@sha256:9e6dfd4abce94bd7c2907c1840b7b35f666587d56b24ffbb930b4782a87ea172
     profiles: ["stats"]
     # The image's ENTRYPOINT is the goaccess binary, so the loop has to be the
     # entrypoint; `command` alone would be passed to goaccess as arguments.

@@ -1,0 +1,17 @@
+[Unit]
+Description=Deploy merged edge changes
+Documentation=file:///srv/edge/bin/deploy.sh
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=debian
+Group=debian
+WorkingDirectory=/srv/edge
+ExecStart=/srv/edge/bin/deploy.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=15min
+NoNewPrivileges=yes
+PrivateTmp=yes
