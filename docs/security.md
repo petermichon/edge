@@ -89,17 +89,23 @@ Reading `edge.env`, `/srv/umami/.env` and the Docker socket is part of this
 same accepted access. Root-owning those files would not change the agent's
 effective power while it remains in the `docker` group.
 
+## App updates
+
+`freshdock` was removed on 2026-11-23. The containers were deleted and each
+stack's untracked `compose.override.yaml` disables its profile. Updates for the
+stateless stacks (`unrom`, `namecada`, `veodee`) now come from
+`systemd/edge-apps.timer` → `bin/app-deploy.sh`: a normal host script using the
+docker CLI, with no container holding the Docker socket. It pulls the repo and
+images, recreates health-gated, rolls back a failed compose change and alerts.
+`nohonu` and `umami` stay manual because upgrades can migrate data.
+
 ## Known risks, ranked
 
-1. **freshdock is still root-equivalent via the Docker socket.**
-   `unrom-freshdock-1` mounts `/var/run/docker.sock` and now runs a pinned
-   digest (`…@sha256:0fdd8011…`) instead of `:latest`; the pin lives in the
-   untracked `/srv/unrom/deploy/compose.override.yaml`. The tag can no longer
-   move under it, but a compromise of freshdock is still host root. It is a
-   separate party from the accepted opencode access. The app images it updates
-   still float on `:latest`, so this remains the unreviewed update path until
-   those repos are digest-pinned and Renovate-managed. Remove it if app updates
-   become deliberate; otherwise keep the digest pin and version the override.
+1. **App images still track `:latest`.** `edge-apps.timer` applies whatever the
+   registry tag points to, so app updates remain unreviewed and non-reproducible
+   until the app repos are digest-pinned and Renovate-managed. The updater is
+   now a trusted host script rather than a third-party socket holder, but the
+   trust model is the same.
 2. **`logs.unrom.com` 401s are outside fail2ban.** That site has no access log
    (it would duplicate the report), so its Basic auth is unthrottled. The
    report is low value; revisit if it starts getting hit.

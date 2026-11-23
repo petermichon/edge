@@ -67,14 +67,15 @@ docs/deployment.md     target host deployment model and migration checklist
 docs/opencode.md       the opencode host process and its route
 docs/security.md       host baseline, fail2ban jail and known risks
 host/                  sshd + fail2ban hardening, installed on the host
-systemd/               edge-monitor and edge-deploy units (installed on the host)
-renovate.json          digest-bump PRs for Caddy and GoAccess
+systemd/               edge-monitor, edge-deploy and edge-apps units
 monitor.env.example    alert destination template (copy to /etc/edge/monitor.env)
+renovate.json          digest-bump PRs for Caddy and GoAccess
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
 bin/validate.sh        Caddyfile + compose validation (used by deploy and CI)
 bin/smoke.sh           every public host must answer over HTTPS
 bin/health.sh          deep upstream checks, reported but never a deploy gate
 bin/monitor.sh         scheduled smoke + health + certificate checks, with alerts
+bin/app-deploy.sh      pull and health-gate the stateless app stacks
 .env.example           OVH credentials template (never commit real values)
 ```
 
@@ -141,10 +142,16 @@ for the pinned Caddy and GoAccess digests, so an image bump is also just a
 merge.
 
 ```sh
-sudo install -m 644 systemd/edge-deploy.service systemd/edge-deploy.timer /etc/systemd/system/
+sudo install -m 644 systemd/edge-deploy.* systemd/edge-apps.* /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now edge-deploy.timer
+sudo systemctl enable --now edge-deploy.timer edge-apps.timer
 ```
+
+Stateless app stacks (unrom, namecada, veodee) are separate:
+`edge-apps.timer` runs `bin/app-deploy.sh` every five minutes, pulls their
+repos and images, recreates health-gated, rolls back a failed compose change,
+and alerts. `nohonu` and `umami` stay manual because their upgrades can migrate
+data. Add a stack to that script when it should follow the same loop.
 
 Manual equivalents:
 

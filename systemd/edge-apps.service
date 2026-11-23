@@ -1,0 +1,17 @@
+[Unit]
+Description=Deploy merged stateless app stacks
+Documentation=file:///srv/edge/bin/app-deploy.sh
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=debian
+Group=debian
+WorkingDirectory=/srv/edge
+ExecStart=/srv/edge/bin/app-deploy.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
+NoNewPrivileges=yes
+PrivateTmp=yes
