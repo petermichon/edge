@@ -65,6 +65,8 @@ snippets/*.caddyfile   shared snippets, imported into every site
 stacks/umami/          versioned Umami retention job (not deployed from here yet)
 docs/deployment.md     target host deployment model and migration checklist
 docs/opencode.md       the opencode host process and its route
+docs/security.md       host baseline, fail2ban jail and known risks
+host/                  sshd + fail2ban hardening, installed on the host
 systemd/               edge-monitor service + timer (installed on the host)
 monitor.env.example    alert destination template (copy to /etc/edge/monitor.env)
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
@@ -288,6 +290,10 @@ writes `index.html` to the `stats-report` volume, which Caddy serves at
 - Custom domains get certificates on demand, and only after the backend
   approves the name via `on_demand_tls` `ask`, so the proxy cannot be made to
   mint certificates for arbitrary domains.
+
+Host-level hardening (SSH, fail2ban, pending updates) and the current risk
+register, including the opencode and freshdock exposure, are in
+[`docs/security.md`](docs/security.md).
 
 ## Conventions
 

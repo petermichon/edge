@@ -72,6 +72,9 @@ edge/
     namecada/compose.yaml
     platformer/compose.yaml
   docs/deployment.md
+  docs/security.md
+  host/sshd/
+  host/fail2ban/
   bin/bootstrap.sh
   bin/deploy.sh
   bin/health.sh
