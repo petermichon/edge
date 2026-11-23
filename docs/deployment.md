@@ -50,9 +50,11 @@ never started for six days.
 Updates now come from `systemd/edge-apps.timer`, which runs
 `bin/app-deploy.sh` every five minutes for the stateless stacks (`unrom`,
 `namecada`, `veodee`). It pulls the repo and images, recreates health-gated,
-rolls back a failed compose change and alerts. It is a normal host script using
-the docker CLI; no container holds the Docker socket. `nohonu` and `umami` stay
-manual because their upgrades can migrate data.
+and alerts. A failed apply retags the previous images, rolls the compose commit
+back, and freezes the stack until `~/.cache/edge-apps/frozen-<stack>` is
+removed, so a bad `:latest` does not retry every five minutes. It is a normal
+host script using the docker CLI; no container holds the Docker socket.
+`nohonu` and `umami` stay manual because their upgrades can migrate data.
 
 All application services join the external `edge` network. Only Caddy publishes
 ports `80` and `443`; the `127.0.0.1:3000`/`:3001` binds on unrom are debugging
@@ -83,6 +85,7 @@ edge/
   bin/bootstrap.sh
   bin/deploy.sh
   bin/app-deploy.sh
+  bin/alert.sh
   bin/health.sh
   bin/monitor.sh
   bin/backup.sh
@@ -94,6 +97,7 @@ edge/
   systemd/edge-deploy.timer
   systemd/edge-apps.service
   systemd/edge-apps.timer
+  systemd/edge-alert@.service
   .env.example
 ```
 

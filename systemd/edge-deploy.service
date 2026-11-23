@@ -3,6 +3,7 @@ Description=Deploy merged edge changes
 Documentation=file:///srv/edge/bin/deploy.sh
 After=network-online.target docker.service
 Wants=network-online.target
+OnFailure=edge-alert@%N.service
 
 [Service]
 Type=oneshot

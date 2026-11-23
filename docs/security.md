@@ -96,8 +96,10 @@ stack's untracked `compose.override.yaml` disables its profile. Updates for the
 stateless stacks (`unrom`, `namecada`, `veodee`) now come from
 `systemd/edge-apps.timer` → `bin/app-deploy.sh`: a normal host script using the
 docker CLI, with no container holding the Docker socket. It pulls the repo and
-images, recreates health-gated, rolls back a failed compose change and alerts.
-`nohonu` and `umami` stay manual because upgrades can migrate data.
+images, recreates health-gated, and alerts. A failed apply retags the previous
+images, rolls the compose commit back, and freezes the stack until
+`~/.cache/edge-apps/frozen-<stack>` is removed. `nohonu` and `umami` stay manual
+because upgrades can migrate data.
 
 ## Known risks, ranked
 
