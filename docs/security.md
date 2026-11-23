@@ -70,30 +70,36 @@ sudo fail2ban-client set opencode unbanip 192.0.2.123
 - Access logs drop query strings, and Caddy redacts `Authorization`, `Cookie`
   and `Set-Cookie` by default.
 
+## Accepted by design
+
+**opencode has full host access.** It runs as `debian`, which is in the
+`docker` group and has `NOPASSWD: ALL` sudo. That is deliberate: the agent is
+meant to edit and deploy the host, so its blast radius is host root, the OVH DNS
+credentials and every app volume. Treat the public vhost as a root console, not
+as a normal web app. What protects it is access control: TLS, a 48-character
+Basic-auth password, and the fail2ban jail above. If the *exposure* ever needs
+to shrink without reducing the agent's privileges, put the vhost behind
+Tailscale/WireGuard or require the app's `X-OC-Key` header — both are
+access-control changes, not privilege changes.
+
+Reading `edge.env`, `/srv/umami/.env` and the Docker socket is part of this
+same accepted access. Root-owning those files would not change the agent's
+effective power while it remains in the `docker` group.
+
 ## Known risks, ranked
 
-1. **opencode is root-equivalent and public.** It runs as `debian`, which is
-   in the `docker` group and has `NOPASSWD: ALL` sudo. `NoNewPrivileges`
-   blocks sudo, but not Docker: a compromise is host root, and can read
-   `/etc/edge/edge.env` (OVH DNS credentials, i.e. domain takeover) and every
-   app volume. The public vhost is gated by one 48-character Basic-auth
-   password plus the fail2ban jail. Best fix: put it behind Tailscale or
-   WireGuard, or run it as a dedicated user with no docker/sudo and a narrow
-   Docker context. A required `X-OC-Key` header is the smallest extra layer
-   the app already supports, but every client must send it.
-2. **freshdock has the Docker socket and a floating image.**
+1. **freshdock has the Docker socket and a floating image.**
    `unrom-freshdock-1` mounts `/var/run/docker.sock` and runs
    `ghcr.io/turbootzz/freshdock:latest`: root-equivalent and tag-mutable.
-   Pin it by digest or remove it and update deliberately.
-3. **Secrets are readable by the agent.** `edge.env` and `/srv/umami/.env` are
-   mode 600 but `debian`-owned. Root-owning them requires running deploy as
-   root or a dedicated deploy user.
-4. **`logs.unrom.com` 401s are outside fail2ban.** That site has no access log
+   Pin it by digest or remove it and update deliberately. This is a separate
+   root-equivalent party from opencode, not part of the accepted design.
+2. **`logs.unrom.com` 401s are outside fail2ban.** That site has no access log
    (it would duplicate the report), so its Basic auth is unthrottled. The
    report is low value; revisit if it starts getting hit.
-5. **No CSP or `X-Frame-Options`.** HSTS, `nosniff` and the referrer policy are
+3. **No CSP or `X-Frame-Options`.** HSTS, `nosniff` and the referrer policy are
    set. CSP is app-specific, and framing headers are unsafe to apply to
    customer domains.
+4. **Reboot pending** for kernel 6.12.118 (see above).
 
 ## Verify
 

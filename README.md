@@ -292,8 +292,9 @@ writes `index.html` to the `stats-report` volume, which Caddy serves at
   mint certificates for arbitrary domains.
 
 Host-level hardening (SSH, fail2ban, pending updates) and the current risk
-register, including the opencode and freshdock exposure, are in
-[`docs/security.md`](docs/security.md).
+register live in [`docs/security.md`](docs/security.md). It also records that
+opencode's full host access is deliberate, so the endpoint is treated as a root
+console rather than a normal web app.
 
 ## Conventions
 
