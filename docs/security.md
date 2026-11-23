@@ -1,0 +1,108 @@
+# Security baseline
+
+Status: applied on the live host on 2026-11-23. The host files are versioned
+here and installed by hand; re-check them after a rebuild.
+
+## Host
+
+### SSH
+
+`host/sshd/99-hardening.conf`:
+
+- key-only: `PasswordAuthentication no`, `KbdInteractiveAuthentication no`
+- `PermitRootLogin no` — root's key is inert; use `debian` + sudo
+- `X11Forwarding no`
+- `AllowTcpForwarding local` — keeps the documented opencode `LocalForward`,
+  drops remote forwards
+- `MaxAuthTries 3`
+
+```sh
+sudo install -m 644 host/sshd/99-hardening.conf /etc/ssh/sshd_config.d/
+sudo sshd -t && sudo systemctl reload ssh
+```
+
+### fail2ban
+
+- `sshd`: Debian default, 3 failures / 5 min, 30 min ban.
+- `opencode`: parses Caddy's JSON access log for `status:401`, 10 failures /
+  10 min, 1 h ban. Docker DNATs 443 to the Caddy container, so an input-chain
+  ban would never see the traffic; this action hooks `nftables` `forward` at
+  priority -10 in its own `f2b-opencode` table.
+
+```sh
+sudo install -m 644 host/fail2ban/filter.d/caddy-opencode.conf /etc/fail2ban/filter.d/
+sudo install -m 644 host/fail2ban/jail.d/opencode.conf /etc/fail2ban/jail.d/
+sudo fail2ban-regex /var/lib/docker/volumes/edge_access-logs/_data/opencode.log \
+  /etc/fail2ban/filter.d/caddy-opencode.conf
+sudo fail2ban-client reload
+sudo fail2ban-client status opencode
+```
+
+The jail reads `/var/lib/docker/volumes/edge_access-logs/_data/opencode.log`;
+update the path if the Compose project or volume name changes. To prove the
+ban path, ban a TEST-NET address and inspect the table, then unban:
+
+```sh
+sudo fail2ban-client set opencode banip 192.0.2.123
+sudo nft list table inet f2b-opencode
+sudo fail2ban-client set opencode unbanip 192.0.2.123
+```
+
+### Firewall and updates
+
+- ufw: default deny incoming; 22/80/443 open; 4096 only from `172.20.0.0/16`.
+- `unattended-upgrades` is enabled. Security updates were installed on
+  2026-11-23; kernel 6.12.118 is installed.
+- **Reboot pending.** A reboot drops every site and kills the opencode agent:
+  schedule it, do not treat it as a no-op. Confirm with
+  `test -f /var/run/reboot-required`.
+
+## Proxy
+
+- Caddy runs read-only, `cap_drop: ALL` + `NET_BIND_SERVICE`,
+  `no-new-privileges`; the admin API listens on `127.0.0.1:2019` inside the
+  container; secrets live outside the repo and the mounted tree.
+- TLS 1.2+ only (TLS 1.1 is rejected), HSTS, `nosniff`, referrer policy, and
+  no `Server` header on platform hostnames. Customer domains deliberately get
+  no HSTS.
+- Custom domains are issued on demand only after the backend approves the
+  name, so the proxy cannot be made to mint certificates for arbitrary hosts.
+- Access logs drop query strings, and Caddy redacts `Authorization`, `Cookie`
+  and `Set-Cookie` by default.
+
+## Known risks, ranked
+
+1. **opencode is root-equivalent and public.** It runs as `debian`, which is
+   in the `docker` group and has `NOPASSWD: ALL` sudo. `NoNewPrivileges`
+   blocks sudo, but not Docker: a compromise is host root, and can read
+   `/etc/edge/edge.env` (OVH DNS credentials, i.e. domain takeover) and every
+   app volume. The public vhost is gated by one 48-character Basic-auth
+   password plus the fail2ban jail. Best fix: put it behind Tailscale or
+   WireGuard, or run it as a dedicated user with no docker/sudo and a narrow
+   Docker context. A required `X-OC-Key` header is the smallest extra layer
+   the app already supports, but every client must send it.
+2. **freshdock has the Docker socket and a floating image.**
+   `unrom-freshdock-1` mounts `/var/run/docker.sock` and runs
+   `ghcr.io/turbootzz/freshdock:latest`: root-equivalent and tag-mutable.
+   Pin it by digest or remove it and update deliberately.
+3. **Secrets are readable by the agent.** `edge.env` and `/srv/umami/.env` are
+   mode 600 but `debian`-owned. Root-owning them requires running deploy as
+   root or a dedicated deploy user.
+4. **`logs.unrom.com` 401s are outside fail2ban.** That site has no access log
+   (it would duplicate the report), so its Basic auth is unthrottled. The
+   report is low value; revisit if it starts getting hit.
+5. **No CSP or `X-Frame-Options`.** HSTS, `nosniff` and the referrer policy are
+   set. CSP is app-specific, and framing headers are unsafe to apply to
+   customer domains.
+
+## Verify
+
+```sh
+sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication|allowtcpforwarding|x11forwarding)'
+sudo fail2ban-client status
+sudo fail2ban-client status opencode
+sudo nft list table inet f2b-opencode
+sudo ufw status verbose
+apt list --upgradable
+test -f /var/run/reboot-required && echo reboot-pending
+```
