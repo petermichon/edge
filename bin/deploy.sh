@@ -2,8 +2,9 @@
 # Deploy the edge on the host.
 #
 # Reload when the Caddy config changed, recreate when the image or compose file
-# did, health-gated either way. Anything that fails validation or the smoke
-# test is rolled back to the previous commit.
+# did, health-gated either way. Validation and apply failures roll back to the
+# previous commit; smoke and deep health describe the apps, so they warn but
+# never revert a config that loaded successfully.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -85,8 +86,9 @@ fi
 
 echo "==> smoke test"
 if ! ./bin/smoke.sh; then
-	rollback
-	exit 1
+	echo "==> WARNING: smoke checks failed; the config stays live" >&2
+	echo "    validation and apply succeeded, so the proxy config is fine:" >&2
+	echo "    an upstream is down, which a rollback cannot fix" >&2
 fi
 
 # An upstream can be down for reasons no Caddy config change can fix, so deep

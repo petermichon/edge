@@ -1,0 +1,31 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax and lint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          sh -n bin/*.sh
+          shellcheck bin/*.sh
+
+      - name: Compose config
+        run: docker compose config -q
+
+      - name: Caddy config
+        run: |
+          docker build -t edge-caddy .
+          docker run --rm edge-caddy caddy hash-password --plaintext ci > /tmp/stats-auth
+          STATS_AUTH_FILE=/tmp/stats-auth bin/validate.sh

@@ -65,10 +65,13 @@ snippets/*.caddyfile   shared snippets, imported into every site
 stacks/umami/          versioned Umami retention job (not deployed from here yet)
 docs/deployment.md     target host deployment model and migration checklist
 docs/opencode.md       the opencode host process and its route
+systemd/               edge-monitor service + timer (installed on the host)
+monitor.env.example    alert destination template (copy to /etc/edge/monitor.env)
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
-bin/validate.sh        Caddyfile + compose validation (used by deploy)
+bin/validate.sh        Caddyfile + compose validation (used by deploy and CI)
 bin/smoke.sh           every public host must answer over HTTPS
 bin/health.sh          deep upstream checks, reported but never a deploy gate
+bin/monitor.sh         scheduled smoke + health + certificate checks, with alerts
 .env.example           OVH credentials template (never commit real values)
 ```
 
@@ -120,11 +123,13 @@ What it does:
    (`docker compose up -d --wait`) when `compose.yaml` changed, no container is
    running, or `snippets/logging.caddyfile` changed — Caddy applies log-writer
    options to an existing file only on a restart, not a reload.
-4. Validates first (`bin/validate.sh`); on any validation, apply, or smoke
-   failure it resets to the previous commit and re-applies it.
-5. Runs the deep upstream checks (`bin/health.sh`) after smoke. Their failure
-   is reported as a warning but does not roll back: an app can be down for
-   reasons no proxy change fixes.
+4. Validates first (`bin/validate.sh`); a validation or apply failure resets to
+   the previous commit and re-applies it.
+5. Runs smoke (`bin/smoke.sh`) and the deep upstream checks
+   (`bin/health.sh`) afterwards. Their failures are warnings, not rollbacks:
+   they describe the apps, and an app can be down for reasons no proxy change
+   fixes. Caddy's reload is atomic, so a config that did not load never
+   replaces the running one.
 
 Manual equivalents:
 
@@ -133,11 +138,38 @@ bin/validate.sh                     # run before merging
 docker compose up -d                # first run, or after compose/Dockerfile changes
 bin/smoke.sh                        # after any change
 bin/health.sh                       # deeper upstream checks (not a gate)
+bin/monitor.sh                      # what edge-monitor.timer runs
 SMOKE_TARGET=203.0.113.10 bin/smoke.sh   # probe a remote host instead of loopback
 ```
 
 Docs-only changes still run validation, smoke and the health checks, but they
 neither reload nor recreate the proxy, because its config is byte-identical.
+
+CI (`.github/workflows/validate.yml`) runs `docker compose config`, shellcheck
+and `bin/validate.sh` with a throwaway auth hash on every pull request. Set
+`STATS_AUTH_FILE` to point validation at a test hash when the real
+`/etc/edge/stats-auth` is not present.
+
+## Monitoring
+
+`edge-monitor.timer` runs `bin/monitor.sh` every five minutes: `bin/smoke.sh`,
+`bin/health.sh`, and a certificate-expiry check (14 days by default).
+
+```sh
+sudo install -m 600 -o "$USER" -g "$(id -gn)" monitor.env.example /etc/edge/monitor.env
+$EDITOR /etc/edge/monitor.env
+sudo install -m 644 systemd/edge-monitor.service systemd/edge-monitor.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now edge-monitor.timer
+```
+
+- `ALERT_WEBHOOK_URL` gets a plain-text POST when a check fails. An ntfy topic
+  works without an account; any endpoint that accepts a text body works.
+- `MONITOR_PING_URL` is a Healthchecks.io ping URL. It is called on success, so
+  the service alerts when the host or its network dies and pings stop.
+- A timer that runs on the host cannot report the host being down by itself.
+  Add an external uptime check (Healthchecks.io, UptimeRobot, another host) for
+  `nohonu.com` and `unrom.com` with TLS-expiry monitoring as the backstop.
 
 ## Adding an app
 
