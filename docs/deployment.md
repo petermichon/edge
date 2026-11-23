@@ -15,6 +15,7 @@ the deployment layer:
 - image tags/digests
 - service definitions, ports, volumes and restart policy
 - deployment, rollback, backup and retention jobs
+- monitoring and alerting
 - secret templates (never real secret values)
 
 ## Current inventory
@@ -74,7 +75,11 @@ edge/
   bin/bootstrap.sh
   bin/deploy.sh
   bin/health.sh
+  bin/monitor.sh
   bin/backup.sh
+  monitor.env.example
+  systemd/edge-monitor.service
+  systemd/edge-monitor.timer
   .env.example
 ```
 
@@ -105,9 +110,14 @@ include:
 3. validate (`bin/validate.sh`, which runs `docker compose config`)
 4. pull or build changed images
 5. `docker compose up -d --wait`
-6. run the existing smoke test
+6. run the existing smoke test (report only)
 7. run `bin/health.sh` (report only, never a rollback gate)
-8. roll back to the previous commit on validation, apply or smoke failure
+8. roll back to the previous commit on validation or apply failure
+
+The smoke and health results are warnings because they describe the apps: a
+rollback cannot fix an upstream outage, and a config that fails to load never
+replaces the running one. `systemd/edge-monitor.timer` runs the same checks on
+a schedule so a broken app is noticed without a deploy.
 
 ## Deferred, higher-friction work
 
@@ -122,6 +132,9 @@ Do these only with a backup and a tested restore path:
 - [ ] Keep one `freshdock` instance per host instead of one per stack; four
       raced and left a container created but never started.
 - [ ] Version `umami-backup` next to the retention job.
+- [ ] Add an external uptime check (Healthchecks.io, UptimeRobot, another host)
+      with TLS-expiry monitoring for the apex hosts; the on-host timer cannot
+      see a dead host.
 - [ ] Preserve existing volume names explicitly (`umami_db-data`,
       `nohonu_nohonu_data`, `edge_*`) so a project rename does not orphan data.
 - [ ] Move app secrets to `/etc/edge/<stack>.env` with `.env.example` templates.

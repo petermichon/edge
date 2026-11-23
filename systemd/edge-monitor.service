@@ -1,0 +1,21 @@
+[Unit]
+Description=Edge reverse proxy monitor
+Documentation=file:///srv/edge/bin/monitor.sh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=debian
+Group=debian
+WorkingDirectory=/srv/edge
+ExecStart=/srv/edge/bin/monitor.sh
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
