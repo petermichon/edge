@@ -3,7 +3,7 @@
 # SMOKE_TARGET overrides the address to probe (default: loopback on the host).
 set -eu
 
-HOSTS="nohonu.com unrom.com veodee.com namecada.com stats.unrom.com logs.unrom.com oc.metal.petermichon.fr platformer.metal.petermichon.fr"
+HOSTS="nohonu.com www.nohonu.com unrom.com www.unrom.com veodee.com www.veodee.com namecada.com www.namecada.com stats.unrom.com logs.unrom.com oc.metal.petermichon.fr platformer.metal.petermichon.fr"
 TARGET="${SMOKE_TARGET:-127.0.0.1}"
 
 # A host added in this deploy has no certificate yet, so its first requests fail
@@ -14,6 +14,7 @@ WAIT=3
 
 probe() {
 	code=$(curl -ks -o /dev/null -w '%{http_code}' \
+		--connect-timeout 5 --max-time 10 \
 		--resolve "$1:443:$TARGET" "https://$1/" 2>/dev/null) || code=000
 	echo "$code"
 }
@@ -35,9 +36,9 @@ for host in $HOSTS; do
 		401) [ "$host" = "logs.unrom.com" ] && ok=1 ;;
 	esac
 	if [ "$ok" -eq 1 ]; then
-		printf '  %-16s %s\n' "$host" "$code"
+		printf '  %-32s %s\n' "$host" "$code"
 	else
-		printf '  %-16s %s FAIL\n' "$host" "$code"; fail=1
+		printf '  %-32s %s FAIL\n' "$host" "$code"; fail=1
 	fi
 done
 

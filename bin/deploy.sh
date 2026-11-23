@@ -7,9 +7,20 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-# One deploy at a time.
-exec 9<"$0"
+# One deploy at a time. The lock must not live on this script's inode: when a
+# pull changes this file, git replaces it via rename, so a second run would
+# open the new inode and proceed in parallel.
+mkdir -p "$HOME/.cache"
+exec 9>"$HOME/.cache/edge-deploy.lock"
 flock -n 9 || { echo "another deploy is already running" >&2; exit 1; }
+
+# Rollback resets --hard, so anything uncommitted would be destroyed. Refuse
+# now and let the operator commit, stash or discard deliberately.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+	echo "refusing to deploy: the work tree has uncommitted changes" >&2
+	git status --short >&2
+	exit 1
+fi
 
 PREV="$(git rev-parse HEAD)"
 
@@ -28,6 +39,9 @@ rebuild=0
 container_changed=0
 for f in $changed; do
 	case "$f" in
+		# Caddy applies log-output changes to an existing file only on a
+		# restart, not a reload (see snippets/logging.caddyfile).
+		snippets/logging.caddyfile) container_changed=1 ;;
 		Caddyfile|sites/*|snippets/*) reload_config=1 ;;
 		Dockerfile) rebuild=1 ;;
 		compose.yaml|compose.yml) container_changed=1 ;;
@@ -73,6 +87,14 @@ echo "==> smoke test"
 if ! ./bin/smoke.sh; then
 	rollback
 	exit 1
+fi
+
+# An upstream can be down for reasons no Caddy config change can fix, so deep
+# health failures are reported but never roll back a passing deploy.
+echo "==> deep health checks"
+if ! ./bin/health.sh; then
+	echo "==> WARNING: an app is unhealthy; the config stays live" >&2
+	echo "    smoke passed, so the proxy is fine: see bin/health.sh output" >&2
 fi
 
 echo "==> deployed $(git rev-parse --short HEAD)"
