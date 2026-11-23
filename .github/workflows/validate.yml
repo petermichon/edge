@@ -26,6 +26,17 @@ jobs:
 
       - name: Caddy config
         run: |
-          docker build -t edge-caddy .
+          # xcaddy downloads modules at build time; a transient proxy/sumdb
+          # failure should not turn the check red.
+          for attempt in 1 2 3; do
+            if docker build -t edge-caddy .; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "docker build failed (attempt $attempt); retrying in 15s" >&2
+            sleep 15
+          done
           docker run --rm edge-caddy caddy hash-password --plaintext ci > /tmp/stats-auth
           STATS_AUTH_FILE=/tmp/stats-auth bin/validate.sh
