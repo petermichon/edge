@@ -29,7 +29,6 @@ the deployment layer:
 | veodee    | `/srv/veodee`         | `veodee`                       | none                                                                            | not yet inventoried                          |
 | namecada  | `/srv/namecada`       | `namecada`                     | none                                                                            | none                                         |
 | platformer| `/home/debian/git/platformer` | `platformer-web`       | none                                                                            | none                                         |
-| freshdock | per-app stacks        | `freshdock`                    | Docker socket                                                                   | none                                         |
 | opencode  | host process (systemd, documented in `docs/opencode.md`) | `opencode serve` | `~/.local/share/opencode` (sessions, provider auth) | `/etc/opencode/server.env` |
 
 `/etc/systemd/system` also holds `umami-retention.timer` and an unversioned
@@ -40,14 +39,20 @@ untracked and carries the `edge` aliases plus the bundled-Caddy disable, so the
 unrom repository alone cannot reproduce the live route. And `platformer` runs
 from `/home/debian/git/platformer`, not `/srv`.
 
-### One updater per host
+### App updates
 
-`freshdock` watches every labelled container on the Docker daemon, not only the
-project that started it. Four per-stack instances were running at once; their
-logs show repeated `409 name already in use` and `404 No such container` as
-they raced, and an interrupted recreate left `nohonu-backend` created but never
-started for six days. Keep exactly one instance per host, and drop the
-per-stack `freshdock` service as each app moves into this repository.
+`freshdock` was removed on 2026-11-23: the containers were deleted and each
+stack's untracked `compose.override.yaml` disables its profile, so a
+`--profile deploy` cannot bring it back. Four per-stack instances had been
+racing host-wide, and an interrupted recreate left `nohonu-backend` created but
+never started for six days.
+
+Updates now come from `systemd/edge-apps.timer`, which runs
+`bin/app-deploy.sh` every five minutes for the stateless stacks (`unrom`,
+`namecada`, `veodee`). It pulls the repo and images, recreates health-gated,
+rolls back a failed compose change and alerts. It is a normal host script using
+the docker CLI; no container holds the Docker socket. `nohonu` and `umami` stay
+manual because their upgrades can migrate data.
 
 All application services join the external `edge` network. Only Caddy publishes
 ports `80` and `443`; the `127.0.0.1:3000`/`:3001` binds on unrom are debugging
@@ -77,6 +82,7 @@ edge/
   host/fail2ban/
   bin/bootstrap.sh
   bin/deploy.sh
+  bin/app-deploy.sh
   bin/health.sh
   bin/monitor.sh
   bin/backup.sh
@@ -86,6 +92,8 @@ edge/
   systemd/edge-monitor.timer
   systemd/edge-deploy.service
   systemd/edge-deploy.timer
+  systemd/edge-apps.service
+  systemd/edge-apps.timer
   .env.example
 ```
 
@@ -125,7 +133,9 @@ rollback cannot fix an upstream outage, and a config that fails to load never
 replaces the running one. `systemd/edge-monitor.timer` runs the same checks on
 a schedule so a broken app is noticed without a deploy. `systemd/edge-deploy.timer`
 runs the deploy script itself every five minutes, making a merge the deploy;
-Renovate supplies the digest bumps as PRs.
+Renovate supplies the digest bumps as PRs. `systemd/edge-apps.timer` runs
+`bin/app-deploy.sh` for the stateless app stacks (pull, recreate health-gated,
+roll back a failed compose change, alert); stateful stacks stay manual.
 
 ## Deferred, higher-friction work
 
