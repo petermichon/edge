@@ -26,8 +26,27 @@ the deployment layer:
 | unrom     | `/srv/unrom`          | `unrom-api`, `unrom-web`       | none                                                                            | none                                         |
 | nohonu    | `/srv/nohonu`         | `nohonu-backend`, `nohonu-web` | `nohonu_nohonu_data`                                                            | not yet inventoried                          |
 | veodee    | `/srv/veodee`         | `veodee`                       | none                                                                            | not yet inventoried                          |
+| namecada  | `/srv/namecada`       | `namecada`                     | none                                                                            | none                                         |
+| platformer| `/home/debian/git/platformer` | `platformer-web`       | none                                                                            | none                                         |
 | freshdock | per-app stacks        | `freshdock`                    | Docker socket                                                                   | none                                         |
-| opencode  | host process (systemd, not in git) | `opencode serve`        | `~/.local/share/opencode` (sessions, provider auth)                             | `/etc/opencode/server.env`                   |
+| opencode  | host process (systemd, documented in `docs/opencode.md`) | `opencode serve` | `~/.local/share/opencode` (sessions, provider auth) | `/etc/opencode/server.env` |
+
+`/etc/systemd/system` also holds `umami-retention.timer` and an unversioned
+`umami-backup.timer`; neither is installed from this repository yet.
+
+Two live deltas are easy to miss. `/srv/unrom/deploy/compose.override.yaml` is
+untracked and carries the `edge` aliases plus the bundled-Caddy disable, so the
+unrom repository alone cannot reproduce the live route. And `platformer` runs
+from `/home/debian/git/platformer`, not `/srv`.
+
+### One updater per host
+
+`freshdock` watches every labelled container on the Docker daemon, not only the
+project that started it. Four per-stack instances were running at once; their
+logs show repeated `409 name already in use` and `404 No such container` as
+they raced, and an interrupted recreate left `nohonu-backend` created but never
+started for six days. Keep exactly one instance per host, and drop the
+per-stack `freshdock` service as each app moves into this repository.
 
 All application services join the external `edge` network. Only Caddy publishes
 ports `80` and `443`; the `127.0.0.1:3000`/`:3001` binds on unrom are debugging
@@ -49,9 +68,12 @@ edge/
     unrom/compose.yaml
     nohonu/compose.yaml
     veodee/compose.yaml
+    namecada/compose.yaml
+    platformer/compose.yaml
   docs/deployment.md
   bin/bootstrap.sh
   bin/deploy.sh
+  bin/health.sh
   bin/backup.sh
   .env.example
 ```
@@ -78,20 +100,28 @@ include:
 
 `deploy.sh` should:
 
-1. `git pull --ff-only`
-2. `docker compose config`
-3. pull or build changed images
-4. `docker compose up -d --wait`
-5. run the existing smoke test
-6. roll back to the previous commit on failure
+1. refuse to run on a dirty work tree
+2. `git pull --ff-only`
+3. validate (`bin/validate.sh`, which runs `docker compose config`)
+4. pull or build changed images
+5. `docker compose up -d --wait`
+6. run the existing smoke test
+7. run `bin/health.sh` (report only, never a rollback gate)
+8. roll back to the previous commit on validation, apply or smoke failure
 
 ## Deferred, higher-friction work
 
 Do these only with a backup and a tested restore path:
 
 - [ ] Move the Umami compose file into `stacks/umami/compose.yaml`.
-- [ ] Copy/adapt the unrom compose file into `stacks/unrom/compose.yaml`.
+- [ ] Copy/adapt the unrom compose file into `stacks/unrom/compose.yaml`,
+      including the untracked `compose.override.yaml` (edge aliases, bundled
+      Caddy disabled). Version that override in the unrom repository now, so a
+      clean redeploy cannot silently break routing.
 - [ ] Inventory nohonu and veodee compose files, environment keys and volumes.
+- [ ] Keep one `freshdock` instance per host instead of one per stack; four
+      raced and left a container created but never started.
+- [ ] Version `umami-backup` next to the retention job.
 - [ ] Preserve existing volume names explicitly (`umami_db-data`,
       `nohonu_nohonu_data`, `edge_*`) so a project rename does not orphan data.
 - [ ] Move app secrets to `/etc/edge/<stack>.env` with `.env.example` templates.
