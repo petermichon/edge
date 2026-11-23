@@ -1,0 +1,13 @@
+[Unit]
+Description=Alert that unit %i failed
+Documentation=file:///srv/edge/bin/alert.sh
+
+[Service]
+Type=oneshot
+User=debian
+Group=debian
+ExecStart=/srv/edge/bin/alert.sh %i
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+PrivateTmp=yes

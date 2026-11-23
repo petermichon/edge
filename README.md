@@ -67,7 +67,7 @@ docs/deployment.md     target host deployment model and migration checklist
 docs/opencode.md       the opencode host process and its route
 docs/security.md       host baseline, fail2ban jail and known risks
 host/                  sshd + fail2ban hardening, installed on the host
-systemd/               edge-monitor, edge-deploy and edge-apps units
+systemd/               edge-monitor, edge-deploy, edge-apps, edge-alert units
 monitor.env.example    alert destination template (copy to /etc/edge/monitor.env)
 renovate.json          digest-bump PRs for Caddy and GoAccess
 bin/deploy.sh          pull, validate, reload-or-recreate, smoke, rollback
@@ -76,6 +76,7 @@ bin/smoke.sh           every public host must answer over HTTPS
 bin/health.sh          deep upstream checks, reported but never a deploy gate
 bin/monitor.sh         scheduled smoke + health + certificate checks, with alerts
 bin/app-deploy.sh      pull and health-gate the stateless app stacks
+bin/alert.sh           post a failed systemd unit to the alert webhook
 .env.example           OVH credentials template (never commit real values)
 ```
 
@@ -142,16 +143,22 @@ for the pinned Caddy and GoAccess digests, so an image bump is also just a
 merge.
 
 ```sh
-sudo install -m 644 systemd/edge-deploy.* systemd/edge-apps.* /etc/systemd/system/
+sudo install -m 644 systemd/edge-deploy.* systemd/edge-apps.* systemd/edge-alert@.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now edge-deploy.timer edge-apps.timer
 ```
 
 Stateless app stacks (unrom, namecada, veodee) are separate:
 `edge-apps.timer` runs `bin/app-deploy.sh` every five minutes, pulls their
-repos and images, recreates health-gated, rolls back a failed compose change,
-and alerts. `nohonu` and `umami` stay manual because their upgrades can migrate
-data. Add a stack to that script when it should follow the same loop.
+repos and images, recreates health-gated, and alerts. If an apply fails it
+retags the previous images, rolls the compose commit back, and freezes the
+stack; a frozen stack is skipped until you fix it and remove
+`~/.cache/edge-apps/frozen-<stack>`. `nohonu` and `umami` stay manual because
+their upgrades can migrate data. Add a stack to that script when it should
+follow the same loop.
+
+A failed edge deploy (validation or apply) triggers `edge-alert@.service`,
+which posts to the same webhook; it does not wait for the monitor to notice.
 
 Manual equivalents:
 
