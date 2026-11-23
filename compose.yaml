@@ -34,9 +34,17 @@ services:
       - access-logs:/var/log/caddy
       # GoAccess's generated report, served at logs.unrom.com.
       - stats-report:/srv/stats:ro
-      # Basic-auth hash for that report. Read via {file.*} at config load, so
-      # rotating it is a reload rather than a recreate.
-      - /etc/edge/stats-auth:/etc/edge/stats-auth:ro
+      # Basic-auth hash for that report. Caddy resolves {file.*} while loading
+      # the config and refuses to start without it, so the file is required.
+      # create_host_path makes a missing file a loud start failure; the short
+      # bind syntax would silently create an empty directory instead.
+      # Rotating the hash needs a recreate, not a reload (see README).
+      - type: bind
+        source: /etc/edge/stats-auth
+        target: /etc/edge/stats-auth
+        read_only: true
+        bind:
+          create_host_path: false
     read_only: true
     tmpfs:
       - /tmp
@@ -56,6 +64,9 @@ services:
     networks:
       - edge
     restart: unless-stopped
+    # Docker's 10s default would SIGKILL Caddy exactly as the global
+    # grace_period (Caddyfile) finishes draining in-flight requests.
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
       interval: 30s
