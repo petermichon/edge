@@ -81,8 +81,11 @@ edge/
   bin/monitor.sh
   bin/backup.sh
   monitor.env.example
+  renovate.json
   systemd/edge-monitor.service
   systemd/edge-monitor.timer
+  systemd/edge-deploy.service
+  systemd/edge-deploy.timer
   .env.example
 ```
 
@@ -120,7 +123,9 @@ include:
 The smoke and health results are warnings because they describe the apps: a
 rollback cannot fix an upstream outage, and a config that fails to load never
 replaces the running one. `systemd/edge-monitor.timer` runs the same checks on
-a schedule so a broken app is noticed without a deploy.
+a schedule so a broken app is noticed without a deploy. `systemd/edge-deploy.timer`
+runs the deploy script itself every five minutes, making a merge the deploy;
+Renovate supplies the digest bumps as PRs.
 
 ## Deferred, higher-friction work
 

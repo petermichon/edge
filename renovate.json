@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":pinDigests"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 2,
+  "prHourlyLimit": 2,
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "pinDigests": true
+    },
+    {
+      "matchPackageNames": [
+        "caddy"
+      ],
+      "groupName": "Caddy"
+    },
+    {
+      "matchPackageNames": [
+        "allinurl/goaccess"
+      ],
+      "groupName": "GoAccess"
+    }
+  ]
+}
