@@ -32,6 +32,9 @@ the deployment layer:
 | platformer| `/home/debian/git/platformer` | `platformer-web`       | none                                                                            | none                                         |
 | opencode  | host process (systemd, documented in `docs/opencode.md`) | `opencode serve` | `~/.local/share/opencode` (sessions, provider auth) | `/etc/opencode/server.env` |
 
+`hardvoxel` builds its site image from source, so it is deployed manually until
+it publishes an image and can join `bin/app-deploy.sh`.
+
 `/etc/systemd/system` also holds `umami-retention.timer` and an unversioned
 `umami-backup.timer`; neither is installed from this repository yet.
 
