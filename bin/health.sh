@@ -33,6 +33,7 @@ check() {
 # static frontend (which smoke checks) is up.
 check nohonu.com /api/health 200
 check unrom.com /api/health 200
+check hardvoxel.com /docs 200
 check stats.unrom.com /api/heartbeat 200
 # The agent's API must reject anonymous callers; 200 here would mean auth is off.
 check oc.metal.petermichon.fr /api/info 401
