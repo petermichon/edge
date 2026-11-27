@@ -5,6 +5,8 @@ hardvoxel.com {
 	import logging hardvoxel
 
 	header {
+		# Temporary until the v1 launch. Remove this at launch.
+		X-Robots-Tag "noindex, nofollow"
 		X-Frame-Options "DENY"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
