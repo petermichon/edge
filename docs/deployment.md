@@ -28,6 +28,7 @@ the deployment layer:
 | nohonu    | `/srv/nohonu`         | `nohonu-backend`, `nohonu-web` | `nohonu_nohonu_data`                                                            | not yet inventoried                          |
 | veodee    | `/srv/veodee`         | `veodee`                       | none                                                                            | not yet inventoried                          |
 | namecada  | `/srv/namecada`       | `namecada`                     | none                                                                            | none                                         |
+| hardvoxel | `/srv/hardvoxel`      | `hardvoxel-web`                | none                                                                            | none                                         |
 | platformer| `/home/debian/git/platformer` | `platformer-web`       | none                                                                            | none                                         |
 | opencode  | host process (systemd, documented in `docs/opencode.md`) | `opencode serve` | `~/.local/share/opencode` (sessions, provider auth) | `/etc/opencode/server.env` |
 
